@@ -1,0 +1,37 @@
+{
+  "interactionLog": [
+    {
+      "userId": "telegram_5874536316",
+      "question": "fees",
+      "timestamp": "2025-11-28T12:33:08.251Z",
+      "requiresHuman": false
+    },
+    {
+      "userId": "telegram_5874536316",
+      "question": "nursing",
+      "timestamp": "2025-11-28T12:33:45.254Z",
+      "requiresHuman": true
+    }
+  ],
+  "userSessions": [
+    [
+      "telegram_5874536316",
+      {
+        "previousQuestions": [
+          {
+            "question": "fees",
+            "timestamp": "2025-11-28T12:33:08.252Z"
+          },
+          {
+            "question": "nursing",
+            "timestamp": "2025-11-28T12:33:45.254Z"
+          }
+        ],
+        "program": null,
+        "year": null,
+        "lastInteraction": "2025-11-28T12:33:45.254Z",
+        "messageCount": 2
+      }
+    ]
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "name": "school-faq-bot",
+  "version": "1.0.0",
+  "description": "School FAQ Chatbot for Telegram and Web",
+  "main": "school-faq-bot.js",
+  "scripts": {
+    "start": "node school-faq-bot.js",
+    "dev": "node school-faq-bot.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "mongoose": "^9.0.0",
+    "node-cron": "^3.0.3",
+    "telegraf": "^4.16.3"
+  },
+  "keywords": [
+    "chatbot",
+    "school",
+    "faq",
+    "telegram"
+  ],
+  "author": "Your Name",
+  "license": "MIT"
+}

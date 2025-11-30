@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: vvu-faq-bot
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: TELEGRAM_BOT_TOKEN
+        value: "8375538231:AAGuBnA0mgJ1z65DZ7Hdf68Hrx0acn_dWbc"
+      - key: PORT
+        value: "10000"
