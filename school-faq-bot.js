@@ -1,4 +1,4 @@
-// school-faq-bot-hosted.js - Optimized for Render with Complaints & Human Support
+
 const express = require('express');
 const bodyParser = require('body-parser');
 const { Telegraf, Markup } = require('telegraf');
@@ -57,7 +57,7 @@ class RenderReadyBot {
                 },
                 accommodation: {
                     hostel: {
-                        fourInRoom: 1500,
+                        fourInRoom: 1000,
                         threeInRoom: 1880,
                         twoInRoom: 2130
                     },
@@ -69,7 +69,7 @@ class RenderReadyBot {
                 }
             },
             
-            courses: "📚 **Courses Available:**\n\n**Health Sciences:**\n• BSc Nursing\n• BSc Midwifery\n• BSc Mental Health Nursing\n\n**Business:**\n• BBA Accounting, Management, Marketing\n• BBA Banking & Finance\n\n**Science:**\n• BSc Computer Science, IT\n• BSc Agribusiness, Mathematics\n\n**Education:**\n• B.Ed Mathematics, Social Studies\n• B.Ed Management, Accounting",
+            courses: "📚 **Courses Available:**\n\n**Health Sciences:**\n• BSc Nursing\n• BSc Midwifery\n• BSc Mental Health Nursing\n\n**Business:**\n• BBA Accounting, Management, Marketing\n• BBA Banking & Finance\n\n**Science:**\n• BSc Agribusiness, Mathematics\n\n**Education:**\n• B.Ed Mathematics, Social Studies, Information Technology\n• B.Ed Management, Accounting",
             
             timetable: "🕒 **Academic Schedule:**\n\n**Monday - Friday**\n• Morning: 7:00 AM - 12:00 PM\n• Afternoon: 1:00 PM - 5:00 PM\n\n**Access:** iSchool Portal after registration",
             
@@ -573,16 +573,13 @@ ${officeStatus}
                 return {
                     response: "💳 **Payment Methods:**\n\n" +
                              "**Bank Transfer:**\n" +
-                             "• Prudential Bank Ghana Ltd.\n" +
-                             "• Account: Valley View University\n" +
-                             "• Account No: 0362000060080\n\n" +
-                             "**Mobile Money:**\n" +
-                             "• Dial *800*50#\n" +
-                             "• Dial *924*200#\n" +
-                             "• Dial *772*42#\n\n" +
+                             "• CBG Bank Ghana.\n" +
+                             "• Account: Valley View University-Techiman Cam\n" +
+                             "• Account No: \n\n" +
+                             
                              "**Separate Accounts:**\n" +
-                             "• Feeding: 0362000060014\n" +
-                             "• Hostel: 0362000060160",
+                             "• Feeding: \n" +
+                             "• Hostel: ",
                     menu: this.getFeeMenu()
                 };
             }
