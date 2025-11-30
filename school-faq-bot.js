@@ -1,4 +1,4 @@
-// school-faq-bot-hosted.js - Optimized for Render with Complaints System
+// school-faq-bot-hosted.js - Optimized for Render with Complaints & Human Support
 const express = require('express');
 const bodyParser = require('body-parser');
 const { Telegraf, Markup } = require('telegraf');
@@ -78,20 +78,30 @@ class RenderReadyBot {
             portal: "🌐 **Student Portal:**\n• Website: ischool.vvu.edu.gh\n• Username: Student ID\n• Password: DDMMYYYY (Date of Birth)\n• Support: ICT Office or 024-220-3118"
         };
 
-        // Complaints System
+        // Enhanced Complaints System with Human Support
         this.complaints = new Map();
         this.complaintCounter = 1;
         this.userSessions = new Map();
+        this.pendingHumanRequests = new Map();
+        this.humanAgents = new Set();
         this.startTime = new Date();
         
-        console.log('🤖 VVU FAQ Bot with Complaints System Initialized for Render');
+        // Office hours for human support
+        this.officeHours = {
+            start: 8, // 8 AM
+            end: 17,  // 5 PM
+            timezone: 'GMT'
+        };
+        
+        console.log('🤖 VVU FAQ Bot with Human Support Initialized for Render');
     }
 
     getMainMenu() {
         return Markup.keyboard([
             ['📝 Admissions', '💰 Fees', '📚 Courses'],
             ['🕒 Timetable', '📞 Contact', '🌐 Student Portal'],
-            ['📢 Complaints', '🔔 Notifications', '❓ Help']
+            ['📢 Complaints', '👨‍💻 Talk to Human', '🔔 Notifications'],
+            ['❓ Help']
         ]).resize();
     }
 
@@ -99,7 +109,7 @@ class RenderReadyBot {
         return Markup.keyboard([
             ['Admission Requirements', 'Fee Structure', 'Available Courses'],
             ['Application Process', 'Payment Methods', 'Portal Access'],
-            ['📋 Main Menu']
+            ['Talk to Human Agent', 'Submit Complaint', '📋 Main Menu']
         ]).resize();
     }
 
@@ -115,7 +125,15 @@ class RenderReadyBot {
         return Markup.keyboard([
             ['Academic Issues', 'Administrative Issues', 'Facilities Issues'],
             ['Financial Issues', 'Security Concerns', 'Other Complaints'],
-            ['📋 Main Menu', '📋 View My Complaints']
+            ['📋 Main Menu', '📋 View My Complaints', '👨‍💻 Talk to Human']
+        ]).resize();
+    }
+
+    getHumanSupportMenu() {
+        return Markup.keyboard([
+            ['🔄 Request Human Help', '📞 Call Campus Directly'],
+            ['📧 Email Support', '🏢 Visit Office'],
+            ['📋 Main Menu', '❓ Cancel Request']
         ]).resize();
     }
 
@@ -123,29 +141,95 @@ class RenderReadyBot {
         return {
             'academic': {
                 name: 'Academic Issues',
-                examples: 'Course registration, Lecturer issues, Grading problems, Academic advising'
+                examples: 'Course registration, Lecturer issues, Grading problems, Academic advising',
+                department: 'Academic Affairs Office',
+                contact: '024-685-7672'
             },
             'administrative': {
                 name: 'Administrative Issues', 
-                examples: 'Registration problems, Document processing, Staff behavior, Delays'
+                examples: 'Registration problems, Document processing, Staff behavior, Delays',
+                department: 'Administration Office',
+                contact: '032-209-6694'
             },
             'facilities': {
                 name: 'Facilities Issues',
-                examples: 'Classroom equipment, Library issues, Hostel problems, Water/electricity'
+                examples: 'Classroom equipment, Library issues, Hostel problems, Water/electricity',
+                department: 'Facilities Management',
+                contact: '020-652-9501'
             },
             'financial': {
                 name: 'Financial Issues',
-                examples: 'Fee payments, Scholarship issues, Financial aid, Billing problems'
+                examples: 'Fee payments, Scholarship issues, Financial aid, Billing problems',
+                department: 'Finance Office',
+                contact: '020-652-9501'
             },
             'security': {
                 name: 'Security Concerns',
-                examples: 'Campus safety, Theft incidents, Harassment, Emergency situations'
+                examples: 'Campus safety, Theft incidents, Harassment, Emergency situations',
+                department: 'Security Office',
+                contact: 'Emergency: 055-123-4567'
             },
             'other': {
                 name: 'Other Complaints',
-                examples: 'Any other concerns not listed above'
+                examples: 'Any other concerns not listed above',
+                department: 'Student Services',
+                contact: '032-209-6694'
             }
         };
+    }
+
+    isDuringOfficeHours() {
+        const now = new Date();
+        const currentHour = now.getHours();
+        const isWeekday = now.getDay() >= 1 && now.getDay() <= 5; // Monday to Friday
+        
+        return isWeekday && currentHour >= this.officeHours.start && currentHour < this.officeHours.end;
+    }
+
+    getOfficeHoursStatus() {
+        const now = new Date();
+        const currentHour = now.getHours();
+        const isWeekday = now.getDay() >= 1 && now.getDay() <= 5;
+        
+        if (!isWeekday) {
+            return "🚫 **Office Closed** - Weekend\n📅 Next opening: Monday 8:00 AM";
+        }
+        
+        if (currentHour < this.officeHours.start) {
+            return `🚫 **Office Closed** - Opens at ${this.officeHours.start}:00 AM`;
+        } else if (currentHour >= this.officeHours.end) {
+            return "🚫 **Office Closed** - Opens tomorrow at 8:00 AM";
+        } else {
+            const closingTime = this.officeHours.end - 12; // Convert to 12-hour format
+            return `✅ **Office Open** - Closes at ${closingTime}:00 PM`;
+        }
+    }
+
+    requestHumanSupport(userId, userInfo, issue) {
+        const requestId = `HR${this.complaintCounter.toString().padStart(4, '0')}`;
+        const request = {
+            id: requestId,
+            userId: userId,
+            userInfo: userInfo,
+            issue: issue,
+            status: 'pending',
+            requestedAt: new Date().toISOString(),
+            assignedTo: null,
+            resolvedAt: null
+        };
+        
+        this.pendingHumanRequests.set(requestId, request);
+        
+        // Store in user session
+        if (!this.userSessions.has(userId)) {
+            this.userSessions.set(userId, { complaints: [], humanRequests: [] });
+        }
+        const userSession = this.userSessions.get(userId);
+        userSession.humanRequests.push(requestId);
+        
+        console.log(`👨‍💻 Human support requested: ${requestId} by ${userId}`);
+        
+        return request;
     }
 
     formatFeesResponse(program, fees) {
@@ -158,6 +242,8 @@ class RenderReadyBot {
     getNotifications() {
         const totalComplaints = this.complaints.size;
         const pendingComplaints = Array.from(this.complaints.values()).filter(c => c.status === 'pending').length;
+        const pendingHumanRequests = this.pendingHumanRequests.size;
+        const officeStatus = this.getOfficeHoursStatus();
         
         return `🔔 **Current Notifications**\n
 📢 Admissions Open for 2025/2026
@@ -165,21 +251,30 @@ class RenderReadyBot {
 💻 Portal Maintenance: Sundays 2-4 AM
 📚 Library: Extended exam hours
 
-📊 **Complaints System:**
+${officeStatus}
+
+📊 **Support System:**
 • Total Complaints: ${totalComplaints}
 • Pending Resolution: ${pendingComplaints}
+• Human Support Requests: ${pendingHumanRequests}
 
 *Check notice board for updates!*`;
     }
 
     submitComplaint(userId, category, description, contactInfo = '') {
         const complaintId = `COMP${this.complaintCounter.toString().padStart(4, '0')}`;
+        const categoryInfo = this.getComplaintCategories()[Object.keys(this.getComplaintCategories()).find(key => 
+            this.getComplaintCategories()[key].name === category
+        )];
+        
         const complaint = {
             id: complaintId,
             userId: userId,
             category: category,
             description: description,
             contactInfo: contactInfo,
+            department: categoryInfo?.department || 'Student Services',
+            contact: categoryInfo?.contact || '032-209-6694',
             status: 'pending',
             submittedAt: new Date().toISOString(),
             resolvedAt: null,
@@ -191,7 +286,7 @@ class RenderReadyBot {
         
         // Store user session
         if (!this.userSessions.has(userId)) {
-            this.userSessions.set(userId, { complaints: [] });
+            this.userSessions.set(userId, { complaints: [], humanRequests: [] });
         }
         const userSession = this.userSessions.get(userId);
         userSession.complaints.push(complaintId);
@@ -213,20 +308,44 @@ class RenderReadyBot {
             .sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt));
     }
 
-    getComplaintStatus(complaintId) {
-        return this.complaints.get(complaintId);
-    }
-
     formatComplaintResponse(complaint) {
         const statusEmoji = complaint.status === 'resolved' ? '✅' : '⏳';
         const resolutionText = complaint.resolution ? `\n\n**Resolution:**\n${complaint.resolution}` : '';
         
         return `📋 **Complaint #${complaint.id}** ${statusEmoji}\n\n` +
                `**Category:** ${complaint.category}\n` +
+               `**Department:** ${complaint.department}\n` +
+               `**Contact:** ${complaint.contact}\n` +
                `**Status:** ${complaint.status.toUpperCase()}\n` +
                `**Submitted:** ${new Date(complaint.submittedAt).toLocaleDateString()}\n` +
                `**Description:**\n${complaint.description}` +
                resolutionText;
+    }
+
+    getHumanSupportResponse(userId) {
+        const officeStatus = this.getOfficeHoursStatus();
+        const isOfficeOpen = this.isDuringOfficeHours();
+        
+        let response = `👨‍💻 **Human Support**\n\n`;
+        
+        if (isOfficeOpen) {
+            response += `✅ ${officeStatus}\n\n`;
+            response += `**Immediate Assistance Available:**\n`;
+            response += `• 📞 Call: 032-209-6694\n`;
+            response += `• 🏢 Visit: Administration Building\n`;
+            response += `• 📧 Email: info@vvu.edu.gh\n\n`;
+            response += `**Request Human Help:**\n`;
+            response += `I can connect you with a human agent for complex issues. Our team is available to help you right now!`;
+        } else {
+            response += `🚫 ${officeStatus}\n\n`;
+            response += `**After-Hours Support:**\n`;
+            response += `• 📧 Email: info@vvu.edu.gh\n`;
+            response += `• 📝 Submit a complaint (24/7)\n`;
+            response += `• 📱 Leave a message\n\n`;
+            response += `**We'll respond first thing tomorrow morning!**`;
+        }
+        
+        return response;
     }
 
     processMessage(question, userId = 'anonymous') {
@@ -234,7 +353,12 @@ class RenderReadyBot {
             console.log(`📨 Received question from ${userId}: "${question}"`);
             
             const questionLower = question.toLowerCase();
-            const userSession = this.userSessions.get(userId) || { complaints: [], complaintInProgress: null };
+            const userSession = this.userSessions.get(userId) || { complaints: [], humanRequests: [], complaintInProgress: null, humanRequestInProgress: null };
+            
+            // Handle human support in progress
+            if (userSession.humanRequestInProgress) {
+                return this.handleHumanSupportFlow(question, userId, userSession);
+            }
             
             // Handle complaints in progress
             if (userSession.complaintInProgress) {
@@ -251,21 +375,82 @@ class RenderReadyBot {
 
             if (questionLower.includes('help') || question === '❓ Help') {
                 return {
-                    response: "🤖 **How can I help you?**\n\nChoose from the options below or ask me anything about:\n• Admissions & Requirements\n• Fees & Payments\n• Courses & Programs\n• Campus Services\n• Complaints & Feedback\n\nI'm here to assist you! 🎓",
+                    response: "🤖 **How can I help you?**\n\nChoose from the options below or ask me anything about:\n• Admissions & Requirements\n• Fees & Payments\n• Courses & Programs\n• Campus Services\n• Complaints & Feedback\n• Human Support & Live Help\n\nI'm here to assist you! 🎓",
                     menu: this.getHelpMenu()
                 };
             }
 
             if (question === '📋 Main Menu') {
-                this.userSessions.set(userId, { complaints: userSession.complaints }); // Clear complaint state
+                this.userSessions.set(userId, { 
+                    complaints: userSession.complaints, 
+                    humanRequests: userSession.humanRequests 
+                }); // Clear in-progress states
                 return {
                     response: "📋 **Main Menu**\n\nWhat would you like to know about?",
                     menu: this.getMainMenu()
                 };
             }
 
+            // Handle human support requests
+            if (questionLower.includes('human') || questionLower.includes('agent') || question === '👨‍💻 Talk to Human' || question === 'Talk to Human Agent') {
+                return {
+                    response: this.getHumanSupportResponse(userId),
+                    menu: this.getHumanSupportMenu()
+                };
+            }
+
+            if (question === '🔄 Request Human Help') {
+                if (!this.isDuringOfficeHours()) {
+                    return {
+                        response: "🚫 **Office Closed**\n\nOur human support team is currently unavailable. Please:\n• Submit a complaint for 24/7 tracking\n• Call during office hours: 8 AM - 5 PM\n• Email: info@vvu.edu.gh\n\nWe'll respond first thing tomorrow!",
+                        menu: this.getMainMenu()
+                    };
+                }
+                
+                // Start human support process
+                userSession.humanRequestInProgress = {
+                    step: 'description'
+                };
+                this.userSessions.set(userId, userSession);
+                
+                return {
+                    response: "👨‍💻 **Human Support Request**\n\nPlease describe what you need help with. Be as detailed as possible so we can connect you with the right specialist:\n\n*Type your issue below:*",
+                    menu: Markup.removeKeyboard()
+                };
+            }
+
+            if (question === '📞 Call Campus Directly') {
+                return {
+                    response: "📞 **Direct Campus Contacts**\n\n**Main Office:** 032-209-6694\n**Admissions:** 024-685-7672\n**Finance:** 020-652-9501\n**E-Learning:** 024-220-3118\n**Emergency:** 055-123-4567\n\n*Available during office hours: Mon-Fri, 8AM-5PM*",
+                    menu: this.getHumanSupportMenu()
+                };
+            }
+
+            if (question === '📧 Email Support') {
+                return {
+                    response: "📧 **Email Support**\n\n**General Inquiries:** info@vvu.edu.gh\n**Admissions:** admissions@vvu.edu.gh\n**Finance:** finance@vvu.edu.gh\n**IT Support:** itsupport@vvu.edu.gh\n\n*We typically respond within 24 hours*",
+                    menu: this.getHumanSupportMenu()
+                };
+            }
+
+            if (question === '🏢 Visit Office') {
+                return {
+                    response: "🏢 **Campus Visit**\n\n**Valley View University - Techiman Campus**\n📍 Location: Techiman, Bono East Region\n🕒 Hours: Monday-Friday, 8:00 AM - 5:00 PM\n\n**Office Locations:**\n• Administration Building: Main queries\n• Academic Block: Course-related issues\n• Finance Office: Fee payments\n• ICT Office: Portal support\n\n*Bring your student ID for faster service*",
+                    menu: this.getHumanSupportMenu()
+                };
+            }
+
+            if (question === '❓ Cancel Request') {
+                userSession.humanRequestInProgress = null;
+                this.userSessions.set(userId, userSession);
+                return {
+                    response: "✅ Request cancelled. Returning to main menu.",
+                    menu: this.getMainMenu()
+                };
+            }
+
             // Handle complaints system
-            if (questionLower.includes('complaint') || question === '📢 Complaints') {
+            if (questionLower.includes('complaint') || question === '📢 Complaints' || question === 'Submit Complaint') {
                 const categories = this.getComplaintCategories();
                 let response = "📢 **Complaints & Feedback System**\n\n";
                 response += "We're here to help! Please select the category that best describes your issue:\n\n";
@@ -293,7 +478,8 @@ class RenderReadyBot {
                 
                 let response = "📋 **Your Complaints**\n\n";
                 userComplaints.forEach((complaint, index) => {
-                    response += `${index + 1}. #${complaint.id} - ${complaint.category} - ${complaint.status.toUpperCase()}\n`;
+                    const statusEmoji = complaint.status === 'resolved' ? '✅' : '⏳';
+                    response += `${index + 1}. #${complaint.id} - ${complaint.category} ${statusEmoji}\n`;
                 });
                 
                 response += "\nSelect a complaint category above to submit a new issue.";
@@ -322,6 +508,7 @@ class RenderReadyBot {
                 }
             }
 
+            // [Rest of your existing fee handlers and other topic handlers remain the same]
             // Handle specific fee queries FIRST (before general fee menu)
             if (question === 'Business Fees' || questionLower.includes('business fee')) {
                 console.log(`✅ Matched Business fees`);
@@ -455,10 +642,10 @@ class RenderReadyBot {
                 }
             }
 
-            // Default response
+            // Default response with human support suggestion
             console.log(`❓ No specific match found for: "${question}"`);
             return {
-                response: "❓ I'm not sure about that, but I can help you with:\n\n• Admissions information 📝\n• Fee structure and payments 💰\n• Available courses and programs 📚\n• Campus contacts and services 📞\n• Submit complaints and feedback 📢\n\nUse the menu below or ask me directly!",
+                response: `❓ I'm not sure about that, but I can help you with:\n\n• Admissions information 📝\n• Fee structure and payments 💰\n• Available courses and programs 📚\n• Campus contacts and services 📞\n• Submit complaints and feedback 📢\n• Talk to human agent 👨‍💻\n\n*If you need personalized help, try "Talk to Human" for live support!*`,
                 menu: this.getMainMenu()
             };
 
@@ -500,10 +687,13 @@ class RenderReadyBot {
             const response = `✅ **Complaint Submitted Successfully!**\n\n` +
                            `**Complaint ID:** #${complaint.id}\n` +
                            `**Category:** ${complaint.category}\n` +
+                           `**Assigned Department:** ${complaint.department}\n` +
+                           `**Contact:** ${complaint.contact}\n` +
                            `**Status:** PENDING\n\n` +
-                           `Your complaint has been recorded and forwarded to the appropriate department. ` +
+                           `Your complaint has been recorded and forwarded to ${complaint.department}. ` +
                            `You can check the status anytime using "View My Complaints".\n\n` +
-                           `*Expected resolution time: 3-5 working days*`;
+                           `*Expected resolution time: 3-5 working days*\n\n` +
+                           `**Need immediate help?** Try "Talk to Human" for live support!`;
             
             return {
                 response: response,
@@ -521,16 +711,68 @@ class RenderReadyBot {
         };
     }
 
+    handleHumanSupportFlow(question, userId, userSession) {
+        const humanRequestInProgress = userSession.humanRequestInProgress;
+        
+        if (humanRequestInProgress.step === 'description') {
+            // Save description and ask for contact info
+            humanRequestInProgress.description = question;
+            humanRequestInProgress.step = 'contact';
+            this.userSessions.set(userId, userSession);
+            
+            return {
+                response: "📞 **Contact Information**\n\nPlease provide your phone number for immediate callback:\n\n*Type your phone number below:*",
+                menu: Markup.removeKeyboard()
+            };
+        } else if (humanRequestInProgress.step === 'contact') {
+            // Submit the human support request
+            const humanRequest = this.requestHumanSupport(
+                userId,
+                { phone: question },
+                humanRequestInProgress.description
+            );
+            
+            // Clear human request in progress
+            userSession.humanRequestInProgress = null;
+            this.userSessions.set(userId, userSession);
+            
+            const response = `✅ **Human Support Request Submitted!**\n\n` +
+                           `**Request ID:** #${humanRequest.id}\n` +
+                           `**Status:** CONNECTING YOU WITH AGENT\n\n` +
+                           `Our support team has been notified and will call you at **${question}** within 15 minutes.\n\n` +
+                           `**While you wait:**\n` +
+                           `• Keep this chat open\n` +
+                           `• Have your student ID ready\n` +
+                           `• Be prepared to describe your issue\n\n` +
+                           `*Thank you for your patience!*`;
+            
+            return {
+                response: response,
+                menu: this.getMainMenu()
+            };
+        }
+        
+        // Fallback - clear human request state and return to main menu
+        userSession.humanRequestInProgress = null;
+        this.userSessions.set(userId, userSession);
+        
+        return {
+            response: "Returning to main menu...",
+            menu: this.getMainMenu()
+        };
+    }
+
     setupRoutes() {
         // Health check
         this.app.get('/', (req, res) => {
             const uptime = process.uptime();
             const totalComplaints = this.complaints.size;
             const pendingComplaints = Array.from(this.complaints.values()).filter(c => c.status === 'pending').length;
+            const pendingHumanRequests = this.pendingHumanRequests.size;
             
             res.json({ 
-                status: '✅ VVU FAQ Bot with Complaints System Running on Render',
-                version: '2.1',
+                status: '✅ VVU FAQ Bot with Human Support Running on Render',
+                version: '2.2',
                 environment: process.env.NODE_ENV || 'development',
                 uptime: `${Math.floor(uptime / 3600)}h ${Math.floor((uptime % 3600) / 60)}m`,
                 users: this.userSessions.size,
@@ -538,6 +780,11 @@ class RenderReadyBot {
                     total: totalComplaints,
                     pending: pendingComplaints,
                     resolved: totalComplaints - pendingComplaints
+                },
+                human_support: {
+                    pending_requests: pendingHumanRequests,
+                    office_hours: this.isDuringOfficeHours() ? 'OPEN' : 'CLOSED',
+                    next_opening: this.getOfficeHoursStatus()
                 },
                 timestamp: new Date().toISOString()
             });
@@ -591,6 +838,25 @@ class RenderReadyBot {
             }
         });
 
+        // Human Support API (for admin purposes)
+        this.app.get('/api/human-requests', (req, res) => {
+            try {
+                const requests = Array.from(this.pendingHumanRequests.values());
+                res.json({
+                    success: true,
+                    requests: requests,
+                    total: requests.length,
+                    office_status: this.isDuringOfficeHours() ? 'OPEN' : 'CLOSED'
+                });
+            } catch (error) {
+                console.error('Human Requests API Error:', error);
+                res.status(500).json({ 
+                    success: false, 
+                    error: 'Internal server error'
+                });
+            }
+        });
+
         // 404 handler
         this.app.use('*', (req, res) => {
             res.status(404).json({
@@ -598,7 +864,8 @@ class RenderReadyBot {
                 availableEndpoints: {
                     'GET /': 'Health check',
                     'POST /api/chat': 'Chat with bot',
-                    'GET /api/complaints': 'Get complaints data (admin)'
+                    'GET /api/complaints': 'Get complaints data (admin)',
+                    'GET /api/human-requests': 'Get human support requests (admin)'
                 }
             });
         });
@@ -607,11 +874,13 @@ class RenderReadyBot {
     start(port = process.env.PORT || 10000) {
         return new Promise((resolve, reject) => {
             this.server = this.app.listen(port, () => {
-                console.log(`\n🚀 VVU FAQ Bot with Complaints System Successfully Deployed on Render!`);
+                console.log(`\n🚀 VVU FAQ Bot with Human Support Successfully Deployed on Render!`);
                 console.log(`📍 Port: ${port}`);
                 console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
                 console.log(`🕒 Started: ${new Date().toISOString()}`);
                 console.log(`📢 Complaints System: ACTIVE`);
+                console.log(`👨‍💻 Human Support: ENABLED`);
+                console.log(`🕐 Office Hours: Mon-Fri, 8AM-5PM`);
                 console.log(`✅ Ready to serve VVU Techiman Campus!`);
                 resolve(this.server);
             }).on('error', reject);
@@ -630,7 +899,7 @@ class RenderTelegramBot {
         this.bot.start((ctx) => {
             const welcomeText = `🎓 *Welcome to VVU Techiman Campus!* 🏫
 
-I'm your official campus assistant, now with complaints system! I can help you with:
+I'm your official campus assistant, now with *human support*! I can help you with:
 
 • 📝 Admissions information
 • 💰 Fees and payments  
@@ -639,6 +908,7 @@ I'm your official campus assistant, now with complaints system! I can help you w
 • 📞 Contact details
 • 🌐 Student portal help
 • 📢 Submit complaints & feedback
+• 👨‍💻 *Talk to human agents*
 
 *Use the menu below or type your question!* 👇`;
 
@@ -646,8 +916,9 @@ I'm your official campus assistant, now with complaints system! I can help you w
         });
 
         this.bot.help((ctx) => {
+            const officeStatus = this.faqBot.getOfficeHoursStatus();
             ctx.replyWithMarkdown(
-                "🤖 *Need help?*\n\nI'm hosted on Render cloud platform for 24/7 availability!\n\nUse the menu buttons or ask me anything about VVU Techiman Campus!\n\n*New Feature:* Submit complaints directly through me!",
+                `🤖 *Need help?*\n\nI'm hosted on Render cloud platform for 24/7 availability!\n\n${officeStatus}\n\n*New Features:*\n• Submit complaints directly\n• Request human support\n• Live agent assistance\n\nUse the menu buttons or ask me anything!`,
                 this.faqBot.getMainMenu()
             );
         });
@@ -683,6 +954,7 @@ I'm your official campus assistant, now with complaints system! I can help you w
         this.bot.launch().then(() => {
             console.log('✅ Telegram Bot Connected to Render Hosting');
             console.log('📢 Complaints System: INTEGRATED');
+            console.log('👨‍💻 Human Support: LIVE');
         }).catch(error => {
             console.log('❌ Telegram Bot Failed:', error.message);
         });
@@ -714,7 +986,7 @@ if (require.main === module) {
             console.log('ℹ️ Telegram Bot: Set TELEGRAM_BOT_TOKEN to enable');
         }
         
-        console.log('🎉 Deployment Complete! Bot with Complaints System is live and ready.');
+        console.log('🎉 Deployment Complete! Bot with Human Support is live and ready.');
         
     }).catch(error => {
         console.error('💥 Deployment Failed:', error.message);
