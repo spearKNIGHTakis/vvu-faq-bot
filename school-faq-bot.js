@@ -1,4 +1,4 @@
-// school-faq-bot-hosted.js - Optimized for Render
+// school-faq-bot-hosted.js - Optimized for Render with Complaints System
 const express = require('express');
 const bodyParser = require('body-parser');
 const { Telegraf, Markup } = require('telegraf');
@@ -78,17 +78,20 @@ class RenderReadyBot {
             portal: "🌐 **Student Portal:**\n• Website: ischool.vvu.edu.gh\n• Username: Student ID\n• Password: DDMMYYYY (Date of Birth)\n• Support: ICT Office or 024-220-3118"
         };
 
+        // Complaints System
+        this.complaints = new Map();
+        this.complaintCounter = 1;
         this.userSessions = new Map();
         this.startTime = new Date();
         
-        console.log('🤖 VVU FAQ Bot Initialized for Render');
+        console.log('🤖 VVU FAQ Bot with Complaints System Initialized for Render');
     }
 
     getMainMenu() {
         return Markup.keyboard([
             ['📝 Admissions', '💰 Fees', '📚 Courses'],
             ['🕒 Timetable', '📞 Contact', '🌐 Student Portal'],
-            ['🔔 Notifications', '❓ Help']
+            ['📢 Complaints', '🔔 Notifications', '❓ Help']
         ]).resize();
     }
 
@@ -108,6 +111,43 @@ class RenderReadyBot {
         ]).resize();
     }
 
+    getComplaintsMenu() {
+        return Markup.keyboard([
+            ['Academic Issues', 'Administrative Issues', 'Facilities Issues'],
+            ['Financial Issues', 'Security Concerns', 'Other Complaints'],
+            ['📋 Main Menu', '📋 View My Complaints']
+        ]).resize();
+    }
+
+    getComplaintCategories() {
+        return {
+            'academic': {
+                name: 'Academic Issues',
+                examples: 'Course registration, Lecturer issues, Grading problems, Academic advising'
+            },
+            'administrative': {
+                name: 'Administrative Issues', 
+                examples: 'Registration problems, Document processing, Staff behavior, Delays'
+            },
+            'facilities': {
+                name: 'Facilities Issues',
+                examples: 'Classroom equipment, Library issues, Hostel problems, Water/electricity'
+            },
+            'financial': {
+                name: 'Financial Issues',
+                examples: 'Fee payments, Scholarship issues, Financial aid, Billing problems'
+            },
+            'security': {
+                name: 'Security Concerns',
+                examples: 'Campus safety, Theft incidents, Harassment, Emergency situations'
+            },
+            'other': {
+                name: 'Other Complaints',
+                examples: 'Any other concerns not listed above'
+            }
+        };
+    }
+
     formatFeesResponse(program, fees) {
         return `💰 **${program} Fees (2025/2026) - PER SEMESTER**\n\n` +
                `• Continuing Students: GHS ${fees.continuing}\n` +
@@ -116,13 +156,77 @@ class RenderReadyBot {
     }
 
     getNotifications() {
+        const totalComplaints = this.complaints.size;
+        const pendingComplaints = Array.from(this.complaints.values()).filter(c => c.status === 'pending').length;
+        
         return `🔔 **Current Notifications**\n
 📢 Admissions Open for 2025/2026
 🎓 Orientation: September 1-5, 2025
 💻 Portal Maintenance: Sundays 2-4 AM
 📚 Library: Extended exam hours
 
+📊 **Complaints System:**
+• Total Complaints: ${totalComplaints}
+• Pending Resolution: ${pendingComplaints}
+
 *Check notice board for updates!*`;
+    }
+
+    submitComplaint(userId, category, description, contactInfo = '') {
+        const complaintId = `COMP${this.complaintCounter.toString().padStart(4, '0')}`;
+        const complaint = {
+            id: complaintId,
+            userId: userId,
+            category: category,
+            description: description,
+            contactInfo: contactInfo,
+            status: 'pending',
+            submittedAt: new Date().toISOString(),
+            resolvedAt: null,
+            resolution: ''
+        };
+        
+        this.complaints.set(complaintId, complaint);
+        this.complaintCounter++;
+        
+        // Store user session
+        if (!this.userSessions.has(userId)) {
+            this.userSessions.set(userId, { complaints: [] });
+        }
+        const userSession = this.userSessions.get(userId);
+        userSession.complaints.push(complaintId);
+        
+        console.log(`📝 New complaint submitted: ${complaintId} by ${userId}`);
+        
+        return complaint;
+    }
+
+    getUserComplaints(userId) {
+        const userSession = this.userSessions.get(userId);
+        if (!userSession || !userSession.complaints) {
+            return [];
+        }
+        
+        return userSession.complaints
+            .map(complaintId => this.complaints.get(complaintId))
+            .filter(complaint => complaint !== undefined)
+            .sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt));
+    }
+
+    getComplaintStatus(complaintId) {
+        return this.complaints.get(complaintId);
+    }
+
+    formatComplaintResponse(complaint) {
+        const statusEmoji = complaint.status === 'resolved' ? '✅' : '⏳';
+        const resolutionText = complaint.resolution ? `\n\n**Resolution:**\n${complaint.resolution}` : '';
+        
+        return `📋 **Complaint #${complaint.id}** ${statusEmoji}\n\n` +
+               `**Category:** ${complaint.category}\n` +
+               `**Status:** ${complaint.status.toUpperCase()}\n` +
+               `**Submitted:** ${new Date(complaint.submittedAt).toLocaleDateString()}\n` +
+               `**Description:**\n${complaint.description}` +
+               resolutionText;
     }
 
     processMessage(question, userId = 'anonymous') {
@@ -130,6 +234,12 @@ class RenderReadyBot {
             console.log(`📨 Received question from ${userId}: "${question}"`);
             
             const questionLower = question.toLowerCase();
+            const userSession = this.userSessions.get(userId) || { complaints: [], complaintInProgress: null };
+            
+            // Handle complaints in progress
+            if (userSession.complaintInProgress) {
+                return this.handleComplaintFlow(question, userId, userSession);
+            }
             
             // Handle menu commands first
             if (questionLower.includes('notification') || question === '🔔 Notifications') {
@@ -141,16 +251,75 @@ class RenderReadyBot {
 
             if (questionLower.includes('help') || question === '❓ Help') {
                 return {
-                    response: "🤖 **How can I help you?**\n\nChoose from the options below or ask me anything about:\n• Admissions & Requirements\n• Fees & Payments\n• Courses & Programs\n• Campus Services\n\nI'm here to assist you! 🎓",
+                    response: "🤖 **How can I help you?**\n\nChoose from the options below or ask me anything about:\n• Admissions & Requirements\n• Fees & Payments\n• Courses & Programs\n• Campus Services\n• Complaints & Feedback\n\nI'm here to assist you! 🎓",
                     menu: this.getHelpMenu()
                 };
             }
 
             if (question === '📋 Main Menu') {
+                this.userSessions.set(userId, { complaints: userSession.complaints }); // Clear complaint state
                 return {
                     response: "📋 **Main Menu**\n\nWhat would you like to know about?",
                     menu: this.getMainMenu()
                 };
+            }
+
+            // Handle complaints system
+            if (questionLower.includes('complaint') || question === '📢 Complaints') {
+                const categories = this.getComplaintCategories();
+                let response = "📢 **Complaints & Feedback System**\n\n";
+                response += "We're here to help! Please select the category that best describes your issue:\n\n";
+                
+                Object.entries(categories).forEach(([key, category]) => {
+                    response += `• **${category.name}**\n  ${category.examples}\n\n`;
+                });
+                
+                response += "Your complaint will be forwarded to the appropriate department for resolution.";
+                
+                return {
+                    response: response,
+                    menu: this.getComplaintsMenu()
+                };
+            }
+
+            if (question === '📋 View My Complaints') {
+                const userComplaints = this.getUserComplaints(userId);
+                if (userComplaints.length === 0) {
+                    return {
+                        response: "📋 **Your Complaints**\n\nYou haven't submitted any complaints yet.",
+                        menu: this.getComplaintsMenu()
+                    };
+                }
+                
+                let response = "📋 **Your Complaints**\n\n";
+                userComplaints.forEach((complaint, index) => {
+                    response += `${index + 1}. #${complaint.id} - ${complaint.category} - ${complaint.status.toUpperCase()}\n`;
+                });
+                
+                response += "\nSelect a complaint category above to submit a new issue.";
+                
+                return {
+                    response: response,
+                    menu: this.getComplaintsMenu()
+                };
+            }
+
+            // Handle complaint categories
+            const complaintCategories = this.getComplaintCategories();
+            for (const [key, category] of Object.entries(complaintCategories)) {
+                if (question === category.name || questionLower.includes(key)) {
+                    // Start complaint process
+                    userSession.complaintInProgress = {
+                        category: category.name,
+                        step: 'description'
+                    };
+                    this.userSessions.set(userId, userSession);
+                    
+                    return {
+                        response: `📝 **${category.name} Complaint**\n\nPlease describe your issue in detail. Include:\n• What happened\n• When it occurred\n• Who was involved (if any)\n• What resolution you're seeking\n\n*Type your description below:*`,
+                        menu: Markup.removeKeyboard()
+                    };
+                }
             }
 
             // Handle specific fee queries FIRST (before general fee menu)
@@ -289,7 +458,7 @@ class RenderReadyBot {
             // Default response
             console.log(`❓ No specific match found for: "${question}"`);
             return {
-                response: "❓ I'm not sure about that, but I can help you with:\n\n• Admissions information 📝\n• Fee structure and payments 💰\n• Available courses and programs 📚\n• Campus contacts and services 📞\n\nUse the menu below or ask me directly!",
+                response: "❓ I'm not sure about that, but I can help you with:\n\n• Admissions information 📝\n• Fee structure and payments 💰\n• Available courses and programs 📚\n• Campus contacts and services 📞\n• Submit complaints and feedback 📢\n\nUse the menu below or ask me directly!",
                 menu: this.getMainMenu()
             };
 
@@ -302,16 +471,74 @@ class RenderReadyBot {
         }
     }
 
+    handleComplaintFlow(question, userId, userSession) {
+        const complaintInProgress = userSession.complaintInProgress;
+        
+        if (complaintInProgress.step === 'description') {
+            // Save description and ask for contact info
+            complaintInProgress.description = question;
+            complaintInProgress.step = 'contact';
+            this.userSessions.set(userId, userSession);
+            
+            return {
+                response: "📞 **Contact Information**\n\nPlease provide your contact information (phone number or email) so we can follow up on your complaint:\n\n*Type your contact information below:*",
+                menu: Markup.removeKeyboard()
+            };
+        } else if (complaintInProgress.step === 'contact') {
+            // Submit the complaint
+            const complaint = this.submitComplaint(
+                userId,
+                complaintInProgress.category,
+                complaintInProgress.description,
+                question
+            );
+            
+            // Clear complaint in progress
+            userSession.complaintInProgress = null;
+            this.userSessions.set(userId, userSession);
+            
+            const response = `✅ **Complaint Submitted Successfully!**\n\n` +
+                           `**Complaint ID:** #${complaint.id}\n` +
+                           `**Category:** ${complaint.category}\n` +
+                           `**Status:** PENDING\n\n` +
+                           `Your complaint has been recorded and forwarded to the appropriate department. ` +
+                           `You can check the status anytime using "View My Complaints".\n\n` +
+                           `*Expected resolution time: 3-5 working days*`;
+            
+            return {
+                response: response,
+                menu: this.getMainMenu()
+            };
+        }
+        
+        // Fallback - clear complaint state and return to main menu
+        userSession.complaintInProgress = null;
+        this.userSessions.set(userId, userSession);
+        
+        return {
+            response: "Returning to main menu...",
+            menu: this.getMainMenu()
+        };
+    }
+
     setupRoutes() {
         // Health check
         this.app.get('/', (req, res) => {
             const uptime = process.uptime();
+            const totalComplaints = this.complaints.size;
+            const pendingComplaints = Array.from(this.complaints.values()).filter(c => c.status === 'pending').length;
+            
             res.json({ 
-                status: '✅ VVU FAQ Bot Running on Render',
-                version: '2.0',
+                status: '✅ VVU FAQ Bot with Complaints System Running on Render',
+                version: '2.1',
                 environment: process.env.NODE_ENV || 'development',
                 uptime: `${Math.floor(uptime / 3600)}h ${Math.floor((uptime % 3600) / 60)}m`,
                 users: this.userSessions.size,
+                complaints: {
+                    total: totalComplaints,
+                    pending: pendingComplaints,
+                    resolved: totalComplaints - pendingComplaints
+                },
                 timestamp: new Date().toISOString()
             });
         });
@@ -345,13 +572,33 @@ class RenderReadyBot {
             }
         });
 
+        // Complaints API (for admin purposes)
+        this.app.get('/api/complaints', (req, res) => {
+            try {
+                const complaints = Array.from(this.complaints.values());
+                res.json({
+                    success: true,
+                    complaints: complaints,
+                    total: complaints.length,
+                    pending: complaints.filter(c => c.status === 'pending').length
+                });
+            } catch (error) {
+                console.error('Complaints API Error:', error);
+                res.status(500).json({ 
+                    success: false, 
+                    error: 'Internal server error'
+                });
+            }
+        });
+
         // 404 handler
         this.app.use('*', (req, res) => {
             res.status(404).json({
                 error: 'Endpoint not found',
                 availableEndpoints: {
                     'GET /': 'Health check',
-                    'POST /api/chat': 'Chat with bot'
+                    'POST /api/chat': 'Chat with bot',
+                    'GET /api/complaints': 'Get complaints data (admin)'
                 }
             });
         });
@@ -360,10 +607,11 @@ class RenderReadyBot {
     start(port = process.env.PORT || 10000) {
         return new Promise((resolve, reject) => {
             this.server = this.app.listen(port, () => {
-                console.log(`\n🚀 VVU FAQ Bot Successfully Deployed on Render!`);
+                console.log(`\n🚀 VVU FAQ Bot with Complaints System Successfully Deployed on Render!`);
                 console.log(`📍 Port: ${port}`);
                 console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
                 console.log(`🕒 Started: ${new Date().toISOString()}`);
+                console.log(`📢 Complaints System: ACTIVE`);
                 console.log(`✅ Ready to serve VVU Techiman Campus!`);
                 resolve(this.server);
             }).on('error', reject);
@@ -382,7 +630,7 @@ class RenderTelegramBot {
         this.bot.start((ctx) => {
             const welcomeText = `🎓 *Welcome to VVU Techiman Campus!* 🏫
 
-I'm your official campus assistant, now hosted on Render! I can help you with:
+I'm your official campus assistant, now with complaints system! I can help you with:
 
 • 📝 Admissions information
 • 💰 Fees and payments  
@@ -390,6 +638,7 @@ I'm your official campus assistant, now hosted on Render! I can help you with:
 • 🕒 Academic schedule
 • 📞 Contact details
 • 🌐 Student portal help
+• 📢 Submit complaints & feedback
 
 *Use the menu below or type your question!* 👇`;
 
@@ -398,7 +647,7 @@ I'm your official campus assistant, now hosted on Render! I can help you with:
 
         this.bot.help((ctx) => {
             ctx.replyWithMarkdown(
-                "🤖 *Need help?*\n\nI'm hosted on Render cloud platform for 24/7 availability!\n\nUse the menu buttons or ask me anything about VVU Techiman Campus!",
+                "🤖 *Need help?*\n\nI'm hosted on Render cloud platform for 24/7 availability!\n\nUse the menu buttons or ask me anything about VVU Techiman Campus!\n\n*New Feature:* Submit complaints directly through me!",
                 this.faqBot.getMainMenu()
             );
         });
@@ -433,6 +682,7 @@ I'm your official campus assistant, now hosted on Render! I can help you with:
     start() {
         this.bot.launch().then(() => {
             console.log('✅ Telegram Bot Connected to Render Hosting');
+            console.log('📢 Complaints System: INTEGRATED');
         }).catch(error => {
             console.log('❌ Telegram Bot Failed:', error.message);
         });
@@ -464,7 +714,7 @@ if (require.main === module) {
             console.log('ℹ️ Telegram Bot: Set TELEGRAM_BOT_TOKEN to enable');
         }
         
-        console.log('🎉 Deployment Complete! Bot is live and ready.');
+        console.log('🎉 Deployment Complete! Bot with Complaints System is live and ready.');
         
     }).catch(error => {
         console.error('💥 Deployment Failed:', error.message);
