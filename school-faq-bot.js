@@ -18,11 +18,56 @@ class RenderReadyBot {
         
         this.setupRoutes();
         
-        // Knowledge Base
+        // Updated Knowledge Base with accurate 2025/2026 fees from PDF
         this.knowledgeBase = {
             admission: "📝 **Admissions Requirements:**\n\n**WASSCE/SSSCE:**\n• Credit passes (A1-C6/A-D) in 3 Core + 3 Elective subjects\n• Core: English, Math, Integrated Science/Social Studies\n\n**Mature Applicants:**\n• 25+ years old\n• Entrance exam required\n\n**Application:** VVU Admissions Portal or Campus Registry",
             
-            fees: "💰 **Fees (2024/2025):**\n\n• Health Programs: GHS 11,000-12,000/year\n• Business Programs: GHS 8,500/year\n• Science Programs: GHS 8,800-9,000/year\n• Education Programs: GHS 7,800/year\n\n**Payment:** Bank transfer, Mobile Money (*800*50#)",
+            fees: {
+                unrestricted: {
+                    business: {
+                        continuing: 3740,
+                        fresh: 4040
+                    },
+                    education: {
+                        regular: {
+                            continuing: 2912,
+                            fresh: 3212
+                        },
+                        sandwich: {
+                            continuing: 2162,
+                            fresh: 2462
+                        }
+                    },
+                    arts: {
+                        continuing: 3740,
+                        fresh: 4040
+                    },
+                    science: {
+                        continuing: 4441,
+                        fresh: 4741
+                    },
+                    nursing: {
+                        continuing: 5490,
+                        fresh: 5790
+                    }
+                },
+                otherCharges: {
+                    srcDues: { continuing: 100, fresh: 150 },
+                    medicalExamination: 300
+                },
+                accommodation: {
+                    hostel: {
+                        fourInRoom: 1500,
+                        threeInRoom: 1880,
+                        twoInRoom: 2130
+                    },
+                    feeding: {
+                        oneMeal: 2464,
+                        twoMeals: 4928,
+                        threeMeals: 6944
+                    }
+                }
+            },
             
             courses: "📚 **Courses Available:**\n\n**Health Sciences:**\n• BSc Nursing\n• BSc Midwifery\n• BSc Mental Health Nursing\n\n**Business:**\n• BBA Accounting, Management, Marketing\n• BBA Banking & Finance\n\n**Science:**\n• BSc Computer Science, IT\n• BSc Agribusiness, Mathematics\n\n**Education:**\n• B.Ed Mathematics, Social Studies\n• B.Ed Management, Accounting",
             
@@ -55,10 +100,25 @@ class RenderReadyBot {
         ]).resize();
     }
 
+    getFeeMenu() {
+        return Markup.keyboard([
+            ['Business Fees', 'Education Fees', 'Science Fees'],
+            ['Nursing Fees', 'Arts Fees', 'Accommodation & Meals'],
+            ['Payment Methods', 'Discounts', '📋 Main Menu']
+        ]).resize();
+    }
+
+    formatFeesResponse(program, fees) {
+        return `💰 **${program} Fees (2025/2026) - PER SEMESTER**\n\n` +
+               `• Continuing Students: GHS ${fees.continuing}\n` +
+               `• Fresh Students: GHS ${fees.fresh}\n\n` +
+               `*Includes Tuition + General Charges*`;
+    }
+
     getNotifications() {
         return `🔔 **Current Notifications**\n
-📢 Admissions Open for 2024/2025
-🎓 Orientation: September 2-6, 2024
+📢 Admissions Open for 2025/2026
+🎓 Orientation: September 1-5, 2025
 💻 Portal Maintenance: Sundays 2-4 AM
 📚 Library: Extended exam hours
 
@@ -91,6 +151,96 @@ class RenderReadyBot {
                 };
             }
 
+            // Handle fee-related queries
+            if (questionLower.includes('fee') || question === '💰 Fees') {
+                return {
+                    response: "💰 **Fee Information (2025/2026)**\n\nSelect your program to see detailed fee structure per semester:",
+                    menu: this.getFeeMenu()
+                };
+            }
+
+            // Handle specific fee queries
+            if (questionLower.includes('business fee')) {
+                return {
+                    response: this.formatFeesResponse("School of Business", this.knowledgeBase.fees.unrestricted.business),
+                    menu: this.getFeeMenu()
+                };
+            }
+
+            if (questionLower.includes('education fee')) {
+                return {
+                    response: this.formatFeesResponse("School of Education - Regular", this.knowledgeBase.fees.unrestricted.education.regular) + 
+                            `\n\n**Sandwich Program:**\n• Continuing: GHS ${this.knowledgeBase.fees.unrestricted.education.sandwich.continuing}\n• Fresh: GHS ${this.knowledgeBase.fees.unrestricted.education.sandwich.fresh}`,
+                    menu: this.getFeeMenu()
+                };
+            }
+
+            if (questionLower.includes('science fee')) {
+                return {
+                    response: this.formatFeesResponse("Faculty of Science", this.knowledgeBase.fees.unrestricted.science),
+                    menu: this.getFeeMenu()
+                };
+            }
+
+            if (questionLower.includes('nursing fee')) {
+                return {
+                    response: this.formatFeesResponse("School of Nursing & Midwifery", this.knowledgeBase.fees.unrestricted.nursing),
+                    menu: this.getFeeMenu()
+                };
+            }
+
+            if (questionLower.includes('arts fee')) {
+                return {
+                    response: this.formatFeesResponse("Faculty of Arts & Social Sciences", this.knowledgeBase.fees.unrestricted.arts),
+                    menu: this.getFeeMenu()
+                };
+            }
+
+            if (questionLower.includes('accommodation') || questionLower.includes('meal')) {
+                const fees = this.knowledgeBase.fees;
+                return {
+                    response: "🏠 **Accommodation & Feeding (Per Semester)**\n\n" +
+                             "**Hostel Fees:**\n" +
+                             `• 4 in a room: GHS ${fees.accommodation.hostel.fourInRoom}\n` +
+                             `• 3 in a room: GHS ${fees.accommodation.hostel.threeInRoom}\n` +
+                             `• 2 in a room: GHS ${fees.accommodation.hostel.twoInRoom}\n\n` +
+                             "**Feeding Plans:**\n" +
+                             `• 1 Meal a Day: GHS ${fees.accommodation.feeding.oneMeal}\n` +
+                             `• 2 Meals a Day: GHS ${fees.accommodation.feeding.twoMeals}\n` +
+                             `• 3 Meals a Day: GHS ${fees.accommodation.feeding.threeMeals}`,
+                    menu: this.getFeeMenu()
+                };
+            }
+
+            if (questionLower.includes('payment method')) {
+                return {
+                    response: "💳 **Payment Methods:**\n\n" +
+                             "**Bank Transfer:**\n" +
+                             "• Prudential Bank Ghana Ltd.\n" +
+                             "• Account: Valley View University\n" +
+                             "• Account No: 0362000060080\n\n" +
+                             "**Mobile Money:**\n" +
+                             "• Dial *800*50#\n" +
+                             "• Dial *924*200#\n" +
+                             "• Dial *772*42#\n\n" +
+                             "**Separate Accounts:**\n" +
+                             "• Feeding: 0362000060014\n" +
+                             "• Hostel: 0362000060160",
+                    menu: this.getFeeMenu()
+                };
+            }
+
+            if (questionLower.includes('discount')) {
+                return {
+                    response: "🎫 **Available Discounts:**\n\n" +
+                             "• 5% waiver for full payment before reopening\n" +
+                             "• 5% waiver for each additional ward\n" +
+                             "• 10% of tuition for certified Seventh-day Adventist students\n" +
+                             "• 25% of tuition for certified Seventh-day Adventist theology students",
+                    menu: this.getFeeMenu()
+                };
+            }
+
             // Handle specific topics
             const responses = {
                 // Admissions
@@ -98,12 +248,6 @@ class RenderReadyBot {
                 '📝 admissions': this.knowledgeBase.admission,
                 'admission requirements': "📋 **Admission Requirements:**\n\n**WASSCE/SSSCE:**\n• 6 Credits (3 Core + 3 Electives)\n• Core: English, Math, Science/Social Studies\n• Electives relevant to your program\n\n**Mature Applicants (25+):**\n• Entrance exam\n• Interview\n• Work experience considered",
                 'application process': "📝 **Application Process:**\n\n1. Get application form (online/campus)\n2. Fill and submit with required documents\n3. Pay application fee\n4. Wait for admission letter\n5. Complete registration\n\n**Deadline:** March 31st annually",
-                
-                // Fees
-                'fee': this.knowledgeBase.fees,
-                '💰 fees': this.knowledgeBase.fees,
-                'fee structure': "💰 **Detailed Fee Structure:**\n\n• Tuition: GHS 7,800 - GHS 12,000\n• Registration: GHS 500/semester\n• Technology: GHS 300/semester\n• SRC Dues: GHS 200/year\n• Hostel: GHS 1,500 - GHS 2,500/semester",
-                'payment methods': "💳 **Payment Methods:**\n\n• Bank: Prudential Bank Ghana\n• Account: Valley View University\n• Mobile Money: *800*50#\n• Cash: Finance Office\n• Online: Student Portal",
                 
                 // Courses
                 'course': this.knowledgeBase.courses,
