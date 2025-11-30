@@ -100,13 +100,140 @@ class RenderReadyBot {
         ]).resize();
     }
 
-    getFeeMenu() {
-        return Markup.keyboard([
-            ['Business Fees', 'Education Fees', 'Science Fees'],
-            ['Nursing Fees', 'Arts Fees', 'Accommodation & Meals'],
-            ['Payment Methods', 'Discounts', '📋 Main Menu']
-        ]).resize();
+   getFeeMenu() {
+    return Markup.keyboard([
+        ['Business Fees', 'Education Fees', 'Science Fees'],
+        ['Nursing Fees', 'Arts Fees', 'Accommodation & Meals'],
+        ['Payment Methods', 'Discounts', '📋 Main Menu']
+    ]).resize();
+}
+
+// In the processMessage method, make sure the fee handlers are correct:
+processMessage(question, userId = 'anonymous') {
+    try {
+        const questionLower = question.toLowerCase();
+        
+        // Handle menu commands first
+        if (questionLower.includes('notification') || question === '🔔 Notifications') {
+            return {
+                response: this.getNotifications(),
+                menu: this.getMainMenu()
+            };
+        }
+
+        if (questionLower.includes('help') || question === '❓ Help') {
+            return {
+                response: "🤖 **How can I help you?**\n\nChoose from the options below or ask me anything about:\n• Admissions & Requirements\n• Fees & Payments\n• Courses & Programs\n• Campus Services\n\nI'm here to assist you! 🎓",
+                menu: this.getHelpMenu()
+            };
+        }
+
+        if (question === '📋 Main Menu') {
+            return {
+                response: "📋 **Main Menu**\n\nWhat would you like to know about?",
+                menu: this.getMainMenu()
+            };
+        }
+
+        // Handle specific fee queries FIRST (before general fee menu)
+        if (question === 'Business Fees' || questionLower.includes('business fee')) {
+            return {
+                response: this.formatFeesResponse("School of Business", this.knowledgeBase.fees.unrestricted.business),
+                menu: this.getFeeMenu()
+            };
+        }
+
+        if (question === 'Education Fees' || questionLower.includes('education fee')) {
+            return {
+                response: this.formatFeesResponse("School of Education - Regular", this.knowledgeBase.fees.unrestricted.education.regular) + 
+                        `\n\n**Sandwich Program:**\n• Continuing: GHS ${this.knowledgeBase.fees.unrestricted.education.sandwich.continuing}\n• Fresh: GHS ${this.knowledgeBase.fees.unrestricted.education.sandwich.fresh}`,
+                menu: this.getFeeMenu()
+            };
+        }
+
+        if (question === 'Science Fees' || questionLower.includes('science fee')) {
+            return {
+                response: this.formatFeesResponse("Faculty of Science", this.knowledgeBase.fees.unrestricted.science),
+                menu: this.getFeeMenu()
+            };
+        }
+
+        if (question === 'Nursing Fees' || questionLower.includes('nursing fee')) {
+            return {
+                response: this.formatFeesResponse("School of Nursing & Midwifery", this.knowledgeBase.fees.unrestricted.nursing),
+                menu: this.getFeeMenu()
+            };
+        }
+
+        if (question === 'Arts Fees' || questionLower.includes('arts fee')) {
+            return {
+                response: this.formatFeesResponse("Faculty of Arts & Social Sciences", this.knowledgeBase.fees.unrestricted.arts),
+                menu: this.getFeeMenu()
+            };
+        }
+
+        if (question === 'Accommodation & Meals' || questionLower.includes('accommodation') || questionLower.includes('meal')) {
+            const fees = this.knowledgeBase.fees;
+            return {
+                response: "🏠 **Accommodation & Feeding (Per Semester)**\n\n" +
+                         "**Hostel Fees:**\n" +
+                         `• 4 in a room: GHS ${fees.accommodation.hostel.fourInRoom}\n` +
+                         `• 3 in a room: GHS ${fees.accommodation.hostel.threeInRoom}\n` +
+                         `• 2 in a room: GHS ${fees.accommodation.hostel.twoInRoom}\n\n` +
+                         "**Feeding Plans:**\n" +
+                         `• 1 Meal a Day: GHS ${fees.accommodation.feeding.oneMeal}\n` +
+                         `• 2 Meals a Day: GHS ${fees.accommodation.feeding.twoMeals}\n` +
+                         `• 3 Meals a Day: GHS ${fees.accommodation.feeding.threeMeals}`,
+                menu: this.getFeeMenu()
+            };
+        }
+
+        if (question === 'Payment Methods' || questionLower.includes('payment method')) {
+            return {
+                response: "💳 **Payment Methods:**\n\n" +
+                         "**Bank Transfer:**\n" +
+                         "• Prudential Bank Ghana Ltd.\n" +
+                         "• Account: Valley View University\n" +
+                         "• Account No: 0362000060080\n\n" +
+                         "**Mobile Money:**\n" +
+                         "• Dial *800*50#\n" +
+                         "• Dial *924*200#\n" +
+                         "• Dial *772*42#\n\n" +
+                         "**Separate Accounts:**\n" +
+                         "• Feeding: 0362000060014\n" +
+                         "• Hostel: 0362000060160",
+                menu: this.getFeeMenu()
+            };
+        }
+
+        if (question === 'Discounts' || questionLower.includes('discount')) {
+            return {
+                response: "🎫 **Available Discounts:**\n\n" +
+                         "• 5% waiver for full payment before reopening\n" +
+                         "• 5% waiver for each additional ward\n" +
+                         "• 10% of tuition for certified Seventh-day Adventist students\n" +
+                         "• 25% of tuition for certified Seventh-day Adventist theology students",
+                menu: this.getFeeMenu()
+            };
+        }
+
+        // Handle general fee menu - THIS SHOULD COME AFTER SPECIFIC FEE HANDLERS
+        if (questionLower.includes('fee') || question === '💰 Fees') {
+            return {
+                response: "💰 **Fee Information (2025/2026)**\n\nSelect your program to see detailed fee structure per semester:",
+                menu: this.getFeeMenu()
+            };
+        }
+
+        // ... rest of your existing code for other topics
+    } catch (error) {
+        console.error('Error processing message:', error);
+        return {
+            response: "⚠️ Sorry, I encountered an error. Please try again or contact campus directly at 032-209-6694",
+            menu: this.getMainMenu()
+        };
     }
+}
 
     formatFeesResponse(program, fees) {
         return `💰 **${program} Fees (2025/2026) - PER SEMESTER**\n\n` +
@@ -127,6 +254,12 @@ class RenderReadyBot {
 
   processMessage(question, userId = 'anonymous') {
     try {
+
+        // Add this at the beginning of processMessage for debugging
+console.log(`📨 Received question: "${question}"`);
+
+// And inside each fee handler, add:
+console.log(`✅ Matched ${program} fees`);
         const questionLower = question.toLowerCase();
         
         // Handle menu commands
