@@ -1,23 +1,24 @@
-// school-faq-bot-hosted.js - Production Ready Version
+// school-faq-bot-hosted.js - Optimized for Render
 const express = require('express');
 const bodyParser = require('body-parser');
 const { Telegraf, Markup } = require('telegraf');
 
-class HostedInteractiveBot {
+class RenderReadyBot {
     constructor() {
         this.app = express();
         this.app.use(bodyParser.json());
         
-        // Security middleware
+        // Security and CORS
         this.app.use((req, res, next) => {
             res.header('Access-Control-Allow-Origin', '*');
             res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+            res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
             next();
         });
         
         this.setupRoutes();
         
-        // Enhanced Knowledge Base
+        // Knowledge Base
         this.knowledgeBase = {
             admission: "📝 **Admissions Requirements:**\n\n**WASSCE/SSSCE:**\n• Credit passes (A1-C6/A-D) in 3 Core + 3 Elective subjects\n• Core: English, Math, Integrated Science/Social Studies\n\n**Mature Applicants:**\n• 25+ years old\n• Entrance exam required\n\n**Application:** VVU Admissions Portal or Campus Registry",
             
@@ -34,6 +35,8 @@ class HostedInteractiveBot {
 
         this.userSessions = new Map();
         this.startTime = new Date();
+        
+        console.log('🤖 VVU FAQ Bot Initialized for Render');
     }
 
     getMainMenu() {
@@ -63,192 +66,126 @@ class HostedInteractiveBot {
     }
 
     processMessage(question, userId = 'anonymous') {
-        const questionLower = question.toLowerCase();
-        
-        // Handle menu commands
-        if (questionLower.includes('notification') || question === '🔔 Notifications') {
+        try {
+            const questionLower = question.toLowerCase();
+            
+            // Handle menu commands
+            if (questionLower.includes('notification') || question === '🔔 Notifications') {
+                return {
+                    response: this.getNotifications(),
+                    menu: this.getMainMenu()
+                };
+            }
+
+            if (questionLower.includes('help') || question === '❓ Help') {
+                return {
+                    response: "🤖 **How can I help you?**\n\nChoose from the options below or ask me anything about:\n• Admissions & Requirements\n• Fees & Payments\n• Courses & Programs\n• Campus Services\n\nI'm here to assist you! 🎓",
+                    menu: this.getHelpMenu()
+                };
+            }
+
+            if (question === '📋 Main Menu') {
+                return {
+                    response: "📋 **Main Menu**\n\nWhat would you like to know about?",
+                    menu: this.getMainMenu()
+                };
+            }
+
+            // Handle specific topics
+            const responses = {
+                // Admissions
+                'admission': this.knowledgeBase.admission,
+                '📝 admissions': this.knowledgeBase.admission,
+                'admission requirements': "📋 **Admission Requirements:**\n\n**WASSCE/SSSCE:**\n• 6 Credits (3 Core + 3 Electives)\n• Core: English, Math, Science/Social Studies\n• Electives relevant to your program\n\n**Mature Applicants (25+):**\n• Entrance exam\n• Interview\n• Work experience considered",
+                'application process': "📝 **Application Process:**\n\n1. Get application form (online/campus)\n2. Fill and submit with required documents\n3. Pay application fee\n4. Wait for admission letter\n5. Complete registration\n\n**Deadline:** March 31st annually",
+                
+                // Fees
+                'fee': this.knowledgeBase.fees,
+                '💰 fees': this.knowledgeBase.fees,
+                'fee structure': "💰 **Detailed Fee Structure:**\n\n• Tuition: GHS 7,800 - GHS 12,000\n• Registration: GHS 500/semester\n• Technology: GHS 300/semester\n• SRC Dues: GHS 200/year\n• Hostel: GHS 1,500 - GHS 2,500/semester",
+                'payment methods': "💳 **Payment Methods:**\n\n• Bank: Prudential Bank Ghana\n• Account: Valley View University\n• Mobile Money: *800*50#\n• Cash: Finance Office\n• Online: Student Portal",
+                
+                // Courses
+                'course': this.knowledgeBase.courses,
+                '📚 courses': this.knowledgeBase.courses,
+                'health programs': "🏥 **Health Sciences Programs:**\n\n• BSc Nursing (4 years)\n• BSc Midwifery (4 years)\n• BSc Mental Health Nursing (4 years)\n\n**Requirements:** Science background preferred\n**Career:** Hospitals, Clinics, Community Health",
+                'business programs': "💼 **Business Programs:**\n\n• BBA Accounting (4 years)\n• BBA Management (4 years)\n• BBA Marketing (4 years)\n• BBA Banking & Finance (4 years)\n\n**Career:** Corporate, Banking, Entrepreneurship",
+                
+                // Other topics
+                'time': this.knowledgeBase.timetable,
+                '🕒 timetable': this.knowledgeBase.timetable,
+                'contact': this.knowledgeBase.contact,
+                '📞 contact': this.knowledgeBase.contact,
+                'portal': this.knowledgeBase.portal,
+                '🌐 student portal': this.knowledgeBase.portal
+            };
+
+            // Find matching response
+            for (const [key, response] of Object.entries(responses)) {
+                if (questionLower.includes(key)) {
+                    return {
+                        response: response,
+                        menu: this.getMainMenu()
+                    };
+                }
+            }
+
+            // Default response
             return {
-                response: this.getNotifications(),
+                response: "❓ I'm not sure about that, but I can help you with:\n\n• Admissions information 📝\n• Fee structure and payments 💰\n• Available courses and programs 📚\n• Campus contacts and services 📞\n\nUse the menu below or ask me directly!",
+                menu: this.getMainMenu()
+            };
+
+        } catch (error) {
+            console.error('Error processing message:', error);
+            return {
+                response: "⚠️ Sorry, I encountered an error. Please try again or contact campus directly at 032-209-6694",
                 menu: this.getMainMenu()
             };
         }
-
-        if (questionLower.includes('help') || question === '❓ Help') {
-            return {
-                response: "🤖 **How can I help you?**\n\nChoose from the options below or ask me anything about:\n• Admissions & Requirements\n• Fees & Payments\n• Courses & Programs\n• Campus Services\n\nI'm here to assist you! 🎓",
-                menu: this.getHelpMenu()
-            };
-        }
-
-        if (question === '📋 Main Menu') {
-            return {
-                response: "📋 **Main Menu**\n\nWhat would you like to know about?",
-                menu: this.getMainMenu()
-            };
-        }
-
-        // Handle specific topics (same as before)
-        if (questionLower.includes('admission') || question === '📝 Admissions') {
-            return {
-                response: this.knowledgeBase.admission,
-                menu: Markup.keyboard([
-                    ['Admission Requirements', 'Application Process'],
-                    ['Application Deadline', 'Required Documents'],
-                    ['📋 Main Menu']
-                ]).resize()
-            };
-        }
-
-        if (questionLower.includes('fee') || question === '💰 Fees') {
-            return {
-                response: this.knowledgeBase.fees,
-                menu: Markup.keyboard([
-                    ['Fee Structure', 'Payment Methods'],
-                    ['Finance Contact', 'Payment Deadline'],
-                    ['📋 Main Menu']
-                ]).resize()
-            };
-        }
-
-        if (questionLower.includes('course') || question === '📚 Courses') {
-            return {
-                response: this.knowledgeBase.courses,
-                menu: Markup.keyboard([
-                    ['Health Programs', 'Business Programs'],
-                    ['Science Programs', 'Education Programs'],
-                    ['📋 Main Menu']
-                ]).resize()
-            };
-        }
-
-        if (questionLower.includes('time') || question === '🕒 Timetable') {
-            return {
-                response: this.knowledgeBase.timetable,
-                menu: this.getMainMenu()
-            };
-        }
-
-        if (questionLower.includes('contact') || question === '📞 Contact') {
-            return {
-                response: this.knowledgeBase.contact,
-                menu: this.getMainMenu()
-            };
-        }
-
-        if (questionLower.includes('portal') || question === '🌐 Student Portal') {
-            return {
-                response: this.knowledgeBase.portal,
-                menu: this.getMainMenu()
-            };
-        }
-
-        // Handle sub-menu items (same as before)
-        if (question === 'Admission Requirements') {
-            return {
-                response: "📋 **Admission Requirements:**\n\n**WASSCE/SSSCE:**\n• 6 Credits (3 Core + 3 Electives)\n• Core: English, Math, Science/Social Studies\n• Electives relevant to your program\n\n**Mature Applicants (25+):**\n• Entrance exam\n• Interview\n• Work experience considered",
-                menu: this.getHelpMenu()
-            };
-        }
-
-        if (question === 'Application Process') {
-            return {
-                response: "📝 **Application Process:**\n\n1. Get application form (online/campus)\n2. Fill and submit with required documents\n3. Pay application fee\n4. Wait for admission letter\n5. Complete registration\n\n**Deadline:** March 31st annually",
-                menu: this.getHelpMenu()
-            };
-        }
-
-        if (question === 'Fee Structure') {
-            return {
-                response: "💰 **Detailed Fee Structure:**\n\n• Tuition: GHS 7,800 - GHS 12,000\n• Registration: GHS 500/semester\n• Technology: GHS 300/semester\n• SRC Dues: GHS 200/year\n• Hostel: GHS 1,500 - GHS 2,500/semester",
-                menu: this.getHelpMenu()
-            };
-        }
-
-        if (question === 'Payment Methods') {
-            return {
-                response: "💳 **Payment Methods:**\n\n• Bank: Prudential Bank Ghana\n• Account: Valley View University\n• Mobile Money: *800*50#\n• Cash: Finance Office\n• Online: Student Portal",
-                menu: this.getHelpMenu()
-            };
-        }
-
-        if (question === 'Health Programs') {
-            return {
-                response: "🏥 **Health Sciences Programs:**\n\n• BSc Nursing (4 years)\n• BSc Midwifery (4 years)\n• BSc Mental Health Nursing (4 years)\n\n**Requirements:** Science background preferred\n**Career:** Hospitals, Clinics, Community Health",
-                menu: this.getHelpMenu()
-            };
-        }
-
-        if (question === 'Business Programs') {
-            return {
-                response: "💼 **Business Programs:**\n\n• BBA Accounting (4 years)\n• BBA Management (4 years)\n• BBA Marketing (4 years)\n• BBA Banking & Finance (4 years)\n\n**Career:** Corporate, Banking, Entrepreneurship",
-                menu: this.getHelpMenu()
-            };
-        }
-
-        // Default response
-        return {
-            response: "❓ I'm not sure about that, but I can help you with:\n\n• Admissions information 📝\n• Fee structure and payments 💰\n• Available courses and programs 📚\n• Campus contacts and services 📞\n\nUse the menu below or ask me directly!",
-            menu: this.getMainMenu()
-        };
     }
 
     setupRoutes() {
-        // Health check with more info
+        // Health check
         this.app.get('/', (req, res) => {
             const uptime = process.uptime();
-            const hours = Math.floor(uptime / 3600);
-            const minutes = Math.floor((uptime % 3600) / 60);
-            const seconds = Math.floor(uptime % 60);
-            
             res.json({ 
-                status: '✅ VVU FAQ Bot Running',
+                status: '✅ VVU FAQ Bot Running on Render',
                 version: '2.0',
-                hosted: true,
-                uptime: `${hours}h ${minutes}m ${seconds}s`,
+                environment: process.env.NODE_ENV || 'development',
+                uptime: `${Math.floor(uptime / 3600)}h ${Math.floor((uptime % 3600) / 60)}m`,
                 users: this.userSessions.size,
-                startTime: this.startTime.toISOString(),
-                endpoints: {
-                    health: '/',
-                    chat: '/api/chat (POST)',
-                    stats: '/api/stats'
-                }
+                timestamp: new Date().toISOString()
             });
         });
 
-        // Chat endpoint
+        // Chat API
         this.app.post('/api/chat', (req, res) => {
             try {
                 const { question, userId } = req.body;
                 
                 if (!question) {
-                    return res.status(400).json({ error: 'Question is required' });
+                    return res.status(400).json({ 
+                        success: false, 
+                        error: 'Question is required' 
+                    });
                 }
 
                 const result = this.processMessage(question, userId || 'web_user');
+                
                 res.json({
                     success: true,
                     ...result,
                     timestamp: new Date().toISOString()
                 });
+                
             } catch (error) {
                 console.error('API Error:', error);
                 res.status(500).json({ 
                     success: false, 
-                    error: 'Internal server error',
-                    response: "Sorry, I'm having trouble right now. Please try again later."
+                    error: 'Internal server error'
                 });
             }
-        });
-
-        // Statistics endpoint
-        this.app.get('/api/stats', (req, res) => {
-            res.json({
-                totalUsers: this.userSessions.size,
-                uptime: process.uptime(),
-                memory: process.memoryUsage(),
-                nodeVersion: process.version,
-                platform: process.platform
-            });
         });
 
         // 404 handler
@@ -257,30 +194,27 @@ class HostedInteractiveBot {
                 error: 'Endpoint not found',
                 availableEndpoints: {
                     'GET /': 'Health check',
-                    'POST /api/chat': 'Chat with bot',
-                    'GET /api/stats': 'Bot statistics'
+                    'POST /api/chat': 'Chat with bot'
                 }
             });
         });
     }
 
-    start(port = process.env.PORT || 3000) {
+    start(port = process.env.PORT || 10000) {
         return new Promise((resolve, reject) => {
-            this.server = this.app.listen(port, '0.0.0.0', () => {
-                console.log(`\n🚀 VVU FAQ Bot Hosted Successfully!`);
+            this.server = this.app.listen(port, () => {
+                console.log(`\n🚀 VVU FAQ Bot Successfully Deployed on Render!`);
                 console.log(`📍 Port: ${port}`);
                 console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
-                console.log(`📊 Health: http://0.0.0.0:${port}`);
-                console.log(`💬 API: http://0.0.0.0:${port}/api/chat`);
                 console.log(`🕒 Started: ${new Date().toISOString()}`);
-                console.log(`✅ Ready for production use!\n`);
+                console.log(`✅ Ready to serve VVU Techiman Campus!`);
                 resolve(this.server);
             }).on('error', reject);
         });
     }
 }
 
-class HostedTelegramBot {
+class RenderTelegramBot {
     constructor(token, faqBot) {
         this.bot = new Telegraf(token);
         this.faqBot = faqBot;
@@ -291,7 +225,7 @@ class HostedTelegramBot {
         this.bot.start((ctx) => {
             const welcomeText = `🎓 *Welcome to VVU Techiman Campus!* 🏫
 
-I'm your hosted campus assistant. I can help you with:
+I'm your official campus assistant, now hosted on Render! I can help you with:
 
 • 📝 Admissions information
 • 💰 Fees and payments  
@@ -307,7 +241,7 @@ I'm your hosted campus assistant. I can help you with:
 
         this.bot.help((ctx) => {
             ctx.replyWithMarkdown(
-                "🤖 *Need help?*\n\nUse the menu buttons or ask me anything about VVU Techiman Campus!",
+                "🤖 *Need help?*\n\nI'm hosted on Render cloud platform for 24/7 availability!\n\nUse the menu buttons or ask me anything about VVU Techiman Campus!",
                 this.faqBot.getMainMenu()
             );
         });
@@ -323,57 +257,62 @@ I'm your hosted campus assistant. I can help you with:
                 
                 await ctx.replyWithMarkdown(result.response, result.menu);
                 
-                console.log(`💬 ${ctx.from.first_name}: "${question}"`);
+                console.log(`💬 ${ctx.from.first_name} asked: "${question}"`);
                 
             } catch (error) {
                 console.error('Telegram Error:', error);
                 ctx.replyWithMarkdown(
-                    "❌ *Sorry, I encountered an error.*\n\nPlease try again or contact campus directly:\n📞 032-209-6694",
+                    "❌ *Temporary issue* - Please try again or contact campus:\n📞 032-209-6694",
                     this.faqBot.getMainMenu()
                 );
             }
         });
 
-        this.bot.catch((err, ctx) => {
-            console.error('Bot Global Error:', err);
+        this.bot.catch((err) => {
+            console.error('Global Bot Error:', err);
         });
     }
 
     start() {
         this.bot.launch().then(() => {
-            console.log('✅ Telegram Bot Connected to Hosted Service');
+            console.log('✅ Telegram Bot Connected to Render Hosting');
         }).catch(error => {
             console.log('❌ Telegram Bot Failed:', error.message);
         });
         
+        // Graceful shutdown
         process.once('SIGINT', () => this.bot.stop('SIGINT'));
         process.once('SIGTERM', () => this.bot.stop('SIGTERM'));
     }
 }
 
-// Production startup
+// Production startup for Render
 if (require.main === module) {
-    const bot = new HostedInteractiveBot();
+    const bot = new RenderReadyBot();
     
-    const port = process.env.PORT || 3000;
+    const port = process.env.PORT || 10000;
     
     bot.start(port).then(() => {
         const telegramToken = process.env.TELEGRAM_BOT_TOKEN;
         
         if (telegramToken && telegramToken.length > 20) {
             try {
-                const telegramBot = new HostedTelegramBot(telegramToken, bot);
+                const telegramBot = new RenderTelegramBot(telegramToken, bot);
                 telegramBot.start();
+                console.log('🤖 Telegram Bot: ACTIVE');
             } catch (error) {
-                console.log('⚠️ Telegram bot disabled:', error.message);
+                console.log('⚠️ Telegram Bot: DISABLED -', error.message);
             }
         } else {
-            console.log('ℹ️ Telegram: Set TELEGRAM_BOT_TOKEN to enable');
+            console.log('ℹ️ Telegram Bot: Set TELEGRAM_BOT_TOKEN to enable');
         }
+        
+        console.log('🎉 Deployment Complete! Bot is live and ready.');
+        
     }).catch(error => {
-        console.error('💥 Startup Failed:', error.message);
+        console.error('💥 Deployment Failed:', error.message);
         process.exit(1);
     });
 }
 
-module.exports = { HostedInteractiveBot, HostedTelegramBot };
+module.exports = { RenderReadyBot, RenderTelegramBot };
