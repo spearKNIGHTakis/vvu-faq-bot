@@ -125,170 +125,169 @@ class RenderReadyBot {
 *Check notice board for updates!*`;
     }
 
-    processMessage(question, userId = 'anonymous') {
-        try {
-            const questionLower = question.toLowerCase();
-            
-            // Handle menu commands
-            if (questionLower.includes('notification') || question === '🔔 Notifications') {
-                return {
-                    response: this.getNotifications(),
-                    menu: this.getMainMenu()
-                };
-            }
-
-            if (questionLower.includes('help') || question === '❓ Help') {
-                return {
-                    response: "🤖 **How can I help you?**\n\nChoose from the options below or ask me anything about:\n• Admissions & Requirements\n• Fees & Payments\n• Courses & Programs\n• Campus Services\n\nI'm here to assist you! 🎓",
-                    menu: this.getHelpMenu()
-                };
-            }
-
-            if (question === '📋 Main Menu') {
-                return {
-                    response: "📋 **Main Menu**\n\nWhat would you like to know about?",
-                    menu: this.getMainMenu()
-                };
-            }
-
-            // Handle fee-related queries
-            if (questionLower.includes('fee') || question === '💰 Fees') {
-                return {
-                    response: "💰 **Fee Information (2025/2026)**\n\nSelect your program to see detailed fee structure per semester:",
-                    menu: this.getFeeMenu()
-                };
-            }
-
-            // Handle specific fee queries
-            if (questionLower.includes('business fee')) {
-                return {
-                    response: this.formatFeesResponse("School of Business", this.knowledgeBase.fees.unrestricted.business),
-                    menu: this.getFeeMenu()
-                };
-            }
-
-            if (questionLower.includes('education fee')) {
-                return {
-                    response: this.formatFeesResponse("School of Education - Regular", this.knowledgeBase.fees.unrestricted.education.regular) + 
-                            `\n\n**Sandwich Program:**\n• Continuing: GHS ${this.knowledgeBase.fees.unrestricted.education.sandwich.continuing}\n• Fresh: GHS ${this.knowledgeBase.fees.unrestricted.education.sandwich.fresh}`,
-                    menu: this.getFeeMenu()
-                };
-            }
-
-            if (questionLower.includes('science fee')) {
-                return {
-                    response: this.formatFeesResponse("Faculty of Science", this.knowledgeBase.fees.unrestricted.science),
-                    menu: this.getFeeMenu()
-                };
-            }
-
-            if (questionLower.includes('nursing fee')) {
-                return {
-                    response: this.formatFeesResponse("School of Nursing & Midwifery", this.knowledgeBase.fees.unrestricted.nursing),
-                    menu: this.getFeeMenu()
-                };
-            }
-
-            if (questionLower.includes('arts fee')) {
-                return {
-                    response: this.formatFeesResponse("Faculty of Arts & Social Sciences", this.knowledgeBase.fees.unrestricted.arts),
-                    menu: this.getFeeMenu()
-                };
-            }
-
-            if (questionLower.includes('accommodation') || questionLower.includes('meal')) {
-                const fees = this.knowledgeBase.fees;
-                return {
-                    response: "🏠 **Accommodation & Feeding (Per Semester)**\n\n" +
-                             "**Hostel Fees:**\n" +
-                             `• 4 in a room: GHS ${fees.accommodation.hostel.fourInRoom}\n` +
-                             `• 3 in a room: GHS ${fees.accommodation.hostel.threeInRoom}\n` +
-                             `• 2 in a room: GHS ${fees.accommodation.hostel.twoInRoom}\n\n` +
-                             "**Feeding Plans:**\n" +
-                             `• 1 Meal a Day: GHS ${fees.accommodation.feeding.oneMeal}\n` +
-                             `• 2 Meals a Day: GHS ${fees.accommodation.feeding.twoMeals}\n` +
-                             `• 3 Meals a Day: GHS ${fees.accommodation.feeding.threeMeals}`,
-                    menu: this.getFeeMenu()
-                };
-            }
-
-            if (questionLower.includes('payment method')) {
-                return {
-                    response: "💳 **Payment Methods:**\n\n" +
-                             "**Bank Transfer:**\n" +
-                             "• Prudential Bank Ghana Ltd.\n" +
-                             "• Account: Valley View University\n" +
-                             "• Account No: 0362000060080\n\n" +
-                             "**Mobile Money:**\n" +
-                             "• Dial *800*50#\n" +
-                             "• Dial *924*200#\n" +
-                             "• Dial *772*42#\n\n" +
-                             "**Separate Accounts:**\n" +
-                             "• Feeding: 0362000060014\n" +
-                             "• Hostel: 0362000060160",
-                    menu: this.getFeeMenu()
-                };
-            }
-
-            if (questionLower.includes('discount')) {
-                return {
-                    response: "🎫 **Available Discounts:**\n\n" +
-                             "• 5% waiver for full payment before reopening\n" +
-                             "• 5% waiver for each additional ward\n" +
-                             "• 10% of tuition for certified Seventh-day Adventist students\n" +
-                             "• 25% of tuition for certified Seventh-day Adventist theology students",
-                    menu: this.getFeeMenu()
-                };
-            }
-
-            // Handle specific topics
-            const responses = {
-                // Admissions
-                'admission': this.knowledgeBase.admission,
-                '📝 admissions': this.knowledgeBase.admission,
-                'admission requirements': "📋 **Admission Requirements:**\n\n**WASSCE/SSSCE:**\n• 6 Credits (3 Core + 3 Electives)\n• Core: English, Math, Science/Social Studies\n• Electives relevant to your program\n\n**Mature Applicants (25+):**\n• Entrance exam\n• Interview\n• Work experience considered",
-                'application process': "📝 **Application Process:**\n\n1. Get application form (online/campus)\n2. Fill and submit with required documents\n3. Pay application fee\n4. Wait for admission letter\n5. Complete registration\n\n**Deadline:** March 31st annually",
-                
-                // Courses
-                'course': this.knowledgeBase.courses,
-                '📚 courses': this.knowledgeBase.courses,
-                'health programs': "🏥 **Health Sciences Programs:**\n\n• BSc Nursing (4 years)\n• BSc Midwifery (4 years)\n• BSc Mental Health Nursing (4 years)\n\n**Requirements:** Science background preferred\n**Career:** Hospitals, Clinics, Community Health",
-                'business programs': "💼 **Business Programs:**\n\n• BBA Accounting (4 years)\n• BBA Management (4 years)\n• BBA Marketing (4 years)\n• BBA Banking & Finance (4 years)\n\n**Career:** Corporate, Banking, Entrepreneurship",
-                
-                // Other topics
-                'time': this.knowledgeBase.timetable,
-                '🕒 timetable': this.knowledgeBase.timetable,
-                'contact': this.knowledgeBase.contact,
-                '📞 contact': this.knowledgeBase.contact,
-                'portal': this.knowledgeBase.portal,
-                '🌐 student portal': this.knowledgeBase.portal
-            };
-
-            // Find matching response
-            for (const [key, response] of Object.entries(responses)) {
-                if (questionLower.includes(key)) {
-                    return {
-                        response: response,
-                        menu: this.getMainMenu()
-                    };
-                }
-            }
-
-            // Default response
+  processMessage(question, userId = 'anonymous') {
+    try {
+        const questionLower = question.toLowerCase();
+        
+        // Handle menu commands
+        if (questionLower.includes('notification') || question === '🔔 Notifications') {
             return {
-                response: "❓ I'm not sure about that, but I can help you with:\n\n• Admissions information 📝\n• Fee structure and payments 💰\n• Available courses and programs 📚\n• Campus contacts and services 📞\n\nUse the menu below or ask me directly!",
-                menu: this.getMainMenu()
-            };
-
-        } catch (error) {
-            console.error('Error processing message:', error);
-            return {
-                response: "⚠️ Sorry, I encountered an error. Please try again or contact campus directly at 032-209-6694",
+                response: this.getNotifications(),
                 menu: this.getMainMenu()
             };
         }
-    }
 
+        if (questionLower.includes('help') || question === '❓ Help') {
+            return {
+                response: "🤖 **How can I help you?**\n\nChoose from the options below or ask me anything about:\n• Admissions & Requirements\n• Fees & Payments\n• Courses & Programs\n• Campus Services\n\nI'm here to assist you! 🎓",
+                menu: this.getHelpMenu()
+            };
+        }
+
+        if (question === '📋 Main Menu') {
+            return {
+                response: "📋 **Main Menu**\n\nWhat would you like to know about?",
+                menu: this.getMainMenu()
+            };
+        }
+
+        // Handle fee-related queries - FIXED: Check for exact matches first
+        if (questionLower.includes('fee') || question === '💰 Fees') {
+            return {
+                response: "💰 **Fee Information (2025/2026)**\n\nSelect your program to see detailed fee structure per semester:",
+                menu: this.getFeeMenu()
+            };
+        }
+
+        // Handle specific fee queries - FIXED: Check for exact button text matches
+        if (question === 'Business Fees' || questionLower.includes('business fee')) {
+            return {
+                response: this.formatFeesResponse("School of Business", this.knowledgeBase.fees.unrestricted.business),
+                menu: this.getFeeMenu()
+            };
+        }
+
+        if (question === 'Education Fees' || questionLower.includes('education fee')) {
+            return {
+                response: this.formatFeesResponse("School of Education - Regular", this.knowledgeBase.fees.unrestricted.education.regular) + 
+                        `\n\n**Sandwich Program:**\n• Continuing: GHS ${this.knowledgeBase.fees.unrestricted.education.sandwich.continuing}\n• Fresh: GHS ${this.knowledgeBase.fees.unrestricted.education.sandwich.fresh}`,
+                menu: this.getFeeMenu()
+            };
+        }
+
+        if (question === 'Science Fees' || questionLower.includes('science fee')) {
+            return {
+                response: this.formatFeesResponse("Faculty of Science", this.knowledgeBase.fees.unrestricted.science),
+                menu: this.getFeeMenu()
+            };
+        }
+
+        if (question === 'Nursing Fees' || questionLower.includes('nursing fee')) {
+            return {
+                response: this.formatFeesResponse("School of Nursing & Midwifery", this.knowledgeBase.fees.unrestricted.nursing),
+                menu: this.getFeeMenu()
+            };
+        }
+
+        if (question === 'Arts Fees' || questionLower.includes('arts fee')) {
+            return {
+                response: this.formatFeesResponse("Faculty of Arts & Social Sciences", this.knowledgeBase.fees.unrestricted.arts),
+                menu: this.getFeeMenu()
+            };
+        }
+
+        if (question === 'Accommodation & Meals' || questionLower.includes('accommodation') || questionLower.includes('meal')) {
+            const fees = this.knowledgeBase.fees;
+            return {
+                response: "🏠 **Accommodation & Feeding (Per Semester)**\n\n" +
+                         "**Hostel Fees:**\n" +
+                         `• 4 in a room: GHS ${fees.accommodation.hostel.fourInRoom}\n` +
+                         `• 3 in a room: GHS ${fees.accommodation.hostel.threeInRoom}\n` +
+                         `• 2 in a room: GHS ${fees.accommodation.hostel.twoInRoom}\n\n` +
+                         "**Feeding Plans:**\n" +
+                         `• 1 Meal a Day: GHS ${fees.accommodation.feeding.oneMeal}\n` +
+                         `• 2 Meals a Day: GHS ${fees.accommodation.feeding.twoMeals}\n` +
+                         `• 3 Meals a Day: GHS ${fees.accommodation.feeding.threeMeals}`,
+                menu: this.getFeeMenu()
+            };
+        }
+
+        if (question === 'Payment Methods' || questionLower.includes('payment method')) {
+            return {
+                response: "💳 **Payment Methods:**\n\n" +
+                         "**Bank Transfer:**\n" +
+                         "• Prudential Bank Ghana Ltd.\n" +
+                         "• Account: Valley View University\n" +
+                         "• Account No: 0362000060080\n\n" +
+                         "**Mobile Money:**\n" +
+                         "• Dial *800*50#\n" +
+                         "• Dial *924*200#\n" +
+                         "• Dial *772*42#\n\n" +
+                         "**Separate Accounts:**\n" +
+                         "• Feeding: 0362000060014\n" +
+                         "• Hostel: 0362000060160",
+                menu: this.getFeeMenu()
+            };
+        }
+
+        if (question === 'Discounts' || questionLower.includes('discount')) {
+            return {
+                response: "🎫 **Available Discounts:**\n\n" +
+                         "• 5% waiver for full payment before reopening\n" +
+                         "• 5% waiver for each additional ward\n" +
+                         "• 10% of tuition for certified Seventh-day Adventist students\n" +
+                         "• 25% of tuition for certified Seventh-day Adventist theology students",
+                menu: this.getFeeMenu()
+            };
+        }
+
+        // Handle other specific topics
+        const responses = {
+            // Admissions
+            'admission': this.knowledgeBase.admission,
+            '📝 admissions': this.knowledgeBase.admission,
+            'admission requirements': "📋 **Admission Requirements:**\n\n**WASSCE/SSSCE:**\n• 6 Credits (3 Core + 3 Electives)\n• Core: English, Math, Science/Social Studies\n• Electives relevant to your program\n\n**Mature Applicants (25+):**\n• Entrance exam\n• Interview\n• Work experience considered",
+            'application process': "📝 **Application Process:**\n\n1. Get application form (online/campus)\n2. Fill and submit with required documents\n3. Pay application fee\n4. Wait for admission letter\n5. Complete registration\n\n**Deadline:** March 31st annually",
+            
+            // Courses
+            'course': this.knowledgeBase.courses,
+            '📚 courses': this.knowledgeBase.courses,
+            'health programs': "🏥 **Health Sciences Programs:**\n\n• BSc Nursing (4 years)\n• BSc Midwifery (4 years)\n• BSc Mental Health Nursing (4 years)\n\n**Requirements:** Science background preferred\n**Career:** Hospitals, Clinics, Community Health",
+            'business programs': "💼 **Business Programs:**\n\n• BBA Accounting (4 years)\n• BBA Management (4 years)\n• BBA Marketing (4 years)\n• BBA Banking & Finance (4 years)\n\n**Career:** Corporate, Banking, Entrepreneurship",
+            
+            // Other topics
+            'time': this.knowledgeBase.timetable,
+            '🕒 timetable': this.knowledgeBase.timetable,
+            'contact': this.knowledgeBase.contact,
+            '📞 contact': this.knowledgeBase.contact,
+            'portal': this.knowledgeBase.portal,
+            '🌐 student portal': this.knowledgeBase.portal
+        };
+
+        // Find matching response
+        for (const [key, response] of Object.entries(responses)) {
+            if (questionLower.includes(key)) {
+                return {
+                    response: response,
+                    menu: this.getMainMenu()
+                };
+            }
+        }
+
+        // Default response
+        return {
+            response: "❓ I'm not sure about that, but I can help you with:\n\n• Admissions information 📝\n• Fee structure and payments 💰\n• Available courses and programs 📚\n• Campus contacts and services 📞\n\nUse the menu below or ask me directly!",
+            menu: this.getMainMenu()
+        };
+
+    } catch (error) {
+        console.error('Error processing message:', error);
+        return {
+            response: "⚠️ Sorry, I encountered an error. Please try again or contact campus directly at 032-209-6694",
+            menu: this.getMainMenu()
+        };
+    }
+}
     setupRoutes() {
         // Health check
         this.app.get('/', (req, res) => {
